@@ -30,7 +30,6 @@ exports.getBcoinTransferEvents = async (address, startBlock) => {
     sort: 'asc',
     apiKey: BSCSCAN_API_KEY
   }
-  console.log(startBlock)
 
   return axios
     .get(BASE_URL, { params })
