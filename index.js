@@ -3,6 +3,7 @@ require('dotenv').config()
 const _ = require('lodash')
 const moment = require('moment')
 const bscscan = require('./bscscan')
+const topAddress = require('./topaddress')
 
 const Discord = require('discord.js');
 const listener = new Discord.Client();
@@ -13,16 +14,7 @@ const DISCORD_BOT_PREFIX = process.env.DISCORD_BOT_PREFIX
 let cachedPMTimestamp = null
 let cachedPMBlockNum = null
 
-const rewardAddresses = new Set([
-  '0x52d2124ab6e2aa2886751c8424bc61a51f1e2ed4',
-  '0xfa6bce1c7bbe759567f3b0211f3f695d340a888c',
-  '0x52b76d0937132144ec27a591ed0876b77926778d',
-  '0x966d1cca4cf740ed9056bab436f1e40ecd759aef',
-  '0x1349197f97af359d096f76782ccb0055676da077',
-  '0x0b6b208e51bcca1eaa2dc58c5d46f684f683d4b3',
-  '0x09f0f48d12cdc1436ea83df269b42d726fe4c001',
-  '0xb1284db011c41bc5296c49f99c41f13ba1f36a48',
-])
+const rewardAddresses = new Set(topAddress)
 
 const CHANNEL_WHITELISTS = new Set([
   'pesugihan-bijital'
