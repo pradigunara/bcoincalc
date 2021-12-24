@@ -5,6 +5,7 @@ const moment = require('moment')
 const bscscan = require('./bscscan')
 const covalent = require('./covalent')
 const topAddress = require('./topaddress')
+const helper = require('./helper')
 
 const Discord = require('discord.js');
 const listener = new Discord.Client();
@@ -14,14 +15,14 @@ const DISCORD_BOT_PREFIX = process.env.DISCORD_BOT_PREFIX
 
 let cachedPMTimestamp = null
 let cachedPMBlockNum = null
-let cachedPrices = null
+let cachedPriceByDate = null
 
 const rewardAddresses = new Set(topAddress)
 rewardAddresses.delete('0xd76026a78a2a9af2f9f57fe6337eed26bfc26aed') // pcs busd
 rewardAddresses.delete('0x2eebe0c34da9ba65521e98cbaa7d97496d05f489') // pcs wbnb
 
 const CHANNEL_WHITELISTS = new Set([
-  'pesugihan-bijital'
+  'pesugihan-bijital', 'general'
 ])
 
 function getPreviousMonthTimestamp() {
@@ -41,7 +42,7 @@ async function getPreviousMonthBlockStart() {
 
   cachedPMTimestamp = timestamp
   cachedPMBlockNum = blockNum
-  cachedPrices = priceByDate
+  cachedPriceByDate = priceByDate
 
   return blockNum
 }
@@ -74,11 +75,20 @@ function totalAmountFromWithdrawals(withdrawals) {
   return Number(totalAmount2Decimal) / 100
 }
 
-function calculateAverageEarning(totalAmount, withdrawals) {
-  const firstWithdraw = _.head(withdrawals)
-  const { timeStamp: firstTimestamp, value: firstAmountRaw } = firstWithdraw
-  const firstAmount = getNumberAmount(firstAmountRaw)
-  const dayDiff = moment().diff(moment.unix(firstTimestamp), 'days')
+// take first withdrawal in past 30 days as starting point
+function calculateAverageEarning(last30dWithdrawals) {
+  const first = _.head(last30dWithdrawals)
+  const last = _.last(last30dWithdrawals)
+
+  const firstAmount = helper.rawValueToDecimal(first.value)
+  const totalAmount = _.chain(last30dWithdrawals)
+    .map(wd => helper.rawValueToDecimal(wd.value))
+    .sum()
+    .value()
+
+  const dayDiff = moment
+    .unix(last.timeStamp)
+    .diff(moment.unix(first.timeStamp), 'days')
 
   return (totalAmount - firstAmount) / dayDiff
 }
@@ -87,9 +97,10 @@ function calculateTotalEarning(withdrawals) {
   return _.chain(withdrawals)
     .map(wd => {
       const txDate = moment.unix(wd.timeStamp).format('YYYY-MM-DD')
-      const price = cachedPrices[txDate]
+      const price = cachedPriceByDate[txDate]
+      const withdrawAmount = helper.rawValueToDecimal(wd.value)
 
-      return price * getNumberAmount(wd.value)
+      return price * withdrawAmount
     })
     .sum()
     .value()
@@ -98,10 +109,8 @@ function calculateTotalEarning(withdrawals) {
 async function getAddressResult(walletAddress) {
   const withdrawals = await getBcoinWithdrawals(walletAddress)
 
-  console.log(withdrawals)
-
   const total = totalAmountFromWithdrawals(withdrawals)
-  const average = calculateAverageEarning(total, withdrawals)
+  const average = calculateAverageEarning(withdrawals)
   const earning = calculateTotalEarning(withdrawals)
 
   return { total, average, earning }
